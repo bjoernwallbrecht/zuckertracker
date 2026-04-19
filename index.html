@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🍬 Zuckerwürfel — Family Sugar Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#FFF8F0;--ink:#2D1B0E;--muted:#9A8070;
+  --border:#F0DDD0;--card:#FFFFFF;
+  --good:#0DC995;--warn:#FF9F43;--bad:#FF5E7D;
+  --save:#7B5EA7;
+}
+html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink)}
+
+/* ── SETUP ── */
+.screen{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+.screen.active{display:flex}
+.setup-box{background:white;border-radius:24px;padding:44px 40px;max-width:480px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.08);text-align:center}
+.setup-logo{font-size:52px;margin-bottom:8px}
+.setup-title{font-family:'Fraunces',serif;font-size:32px;font-weight:700;margin-bottom:8px}
+.setup-sub{font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.choice-btn{padding:22px 16px;border:2.5px solid var(--border);border-radius:16px;background:white;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.choice-btn:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.07)}
+.choice-icon{font-size:32px;margin-bottom:8px}
+.choice-label{font-weight:600;font-size:14px;display:block;margin-bottom:4px}
+.choice-desc{font-size:12px;color:var(--muted)}
+.step-back{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;margin-bottom:20px;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px}
+.step-back:hover{color:var(--ink)}
+.flabel{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;text-align:left}
+.finput{width:100%;padding:13px 16px;border:2px solid var(--border);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--cream);outline:none;transition:border-color .2s;margin-bottom:14px}
+.finput:focus{border-color:var(--ink)}
+.primary-btn{width:100%;padding:14px;background:var(--ink);color:white;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:4px}
+.primary-btn:hover{background:#2d3a2d;transform:translateY(-1px)}
+.primary-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.info-box{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:16px;margin-top:20px;text-align:left;font-size:13px;line-height:1.6;color:#166534}
+.info-box strong{display:block;margin-bottom:4px}
+.code-box{background:#1A1F1A;color:#F7FAF5;border-radius:12px;padding:20px;margin:16px 0;font-family:monospace;font-size:18px;letter-spacing:1px;word-break:break-all;cursor:pointer;transition:opacity .2s}
+.code-box:hover{opacity:.85}
+.copy-hint{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:12px}
+.err-msg{color:var(--bad);font-size:13px;margin-top:8px;min-height:20px}
+.link{color:#16A34A;text-decoration:none}.link:hover{text-decoration:underline}
+
+/* ── MAIN APP ── */
+#app{display:none;min-height:100vh;padding-bottom:72px}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:60px;position:sticky;top:0;z-index:100;
+  background:linear-gradient(135deg,#FF5E7D 0%,#FF9F43 35%,#0DC995 70%,#38BDF8 100%);
+  box-shadow:0 3px 16px rgba(0,0,0,.12);
+}
+.app-title{display:flex;align-items:center;gap:8px}
+.app-title-text{font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:white;text-shadow:0 2px 4px rgba(0,0,0,.15)}
+.topbar-right{display:flex;align-items:center;gap:6px}
+.icon-btn{background:rgba(255,255,255,.25);border:none;cursor:pointer;color:white;font-size:18px;padding:8px 10px;border-radius:10px;transition:all .2s;backdrop-filter:blur(4px);min-width:40px;min-height:40px;display:flex;align-items:center;justify-content:center}
+.icon-btn:hover{background:rgba(255,255,255,.4)}
+.sync-info{font-size:11px;color:rgba(255,255,255,.9);font-weight:600;background:rgba(255,255,255,.2);padding:4px 8px;border-radius:20px}
+
+/* ── BOTTOM NAV (mobile-first, replaces top tabs) ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:white;border-top:1px solid var(--border);
+  display:flex;padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  box-shadow:0 -4px 20px rgba(0,0,0,.08);
+}
+.bnav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 4px;border:none;background:transparent;cursor:pointer;
+  border-radius:12px;transition:all .2s;min-height:52px;
+}
+.bnav-btn.on{background:var(--cream)}
+.bnav-icon{font-size:22px;line-height:1}
+.bnav-label{font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;color:#9A8070;letter-spacing:.01em}
+.bnav-btn.on .bnav-label{color:var(--ink)}
+
+.main{max-width:960px;margin:0 auto;padding:16px 12px 24px}
+
+/* ── PERSON CARDS — 2 cols default on mobile, 5 on wide ── */
+.family-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.pcard{border-radius:16px;padding:14px 10px 12px;cursor:pointer;transition:all .2s;border:2.5px solid transparent;text-align:center;position:relative;overflow:hidden}
+.pcard.sel{border-color:var(--pc);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.pcard-emoji{font-size:30px;margin-bottom:5px;display:block}
+.pcard-name{font-weight:700;font-size:15px;margin-bottom:1px}
+.pcard-sub{font-size:11px;color:var(--muted);margin-bottom:9px}
+.tank-wrap{position:relative;height:40px;background:rgba(0,0,0,.06);border-radius:9px;overflow:hidden;margin-bottom:6px}
+.tank-fill{position:absolute;bottom:0;left:0;right:0;border-radius:9px;transition:height .5s cubic-bezier(.34,1.56,.64,1)}
+.tank-save{position:absolute;bottom:0;left:0;right:0;background:repeating-linear-gradient(45deg,rgba(123,94,167,.22) 0px,rgba(123,94,167,.22) 4px,transparent 4px,transparent 8px);border-radius:9px;transition:height .5s cubic-bezier(.34,1.56,.64,1)}
+.tank-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;z-index:2}
+.status-pill{display:inline-block;border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;margin-top:2px}
+.save-badge{position:absolute;top:8px;right:8px;background:var(--save);color:white;border-radius:7px;font-size:9px;font-weight:700;padding:2px 5px;line-height:1.4}
+
+/* ── PANEL ── */
+.panel{background:white;border-radius:18px;padding:18px;box-shadow:0 2px 16px rgba(0,0,0,.05);margin-bottom:14px}
+.panel-title{font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;margin-bottom:14px}
+.panel-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+
+/* ── BUDGET HERO — stacked on mobile ── */
+.budget-hero{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.budget-block{border-radius:12px;padding:12px 8px;text-align:center}
+.budget-num{font-family:'Fraunces',serif;font-size:26px;font-weight:700;line-height:1;margin-bottom:3px}
+.budget-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+
+/* ── DRAIN BAR ── */
+.drain-bar-wrap{position:relative;background:#F0E8DF;border-radius:100px;height:12px;overflow:hidden;margin-bottom:4px}
+.drain-bar-base{position:absolute;left:0;top:0;height:100%;border-radius:100px;transition:width .6s cubic-bezier(.34,1.56,.64,1)}
+.drain-bar-save{position:absolute;top:0;height:100%;border-radius:0 100px 100px 0;background:repeating-linear-gradient(45deg,rgba(123,94,167,.35) 0px,rgba(123,94,167,.35) 4px,rgba(123,94,167,.1) 4px,rgba(123,94,167,.1) 8px)}
+.drain-label-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:16px}
+.drain-label-save{color:var(--save);font-weight:600}
+
+/* ── SAVINGS BANK PANEL ── */
+.bank-panel{background:linear-gradient(135deg,#F3EEFF 0%,#E0FBF4 100%);border:1.5px solid #D4C5F0;border-radius:18px;padding:16px;margin-bottom:14px}
+.bank-title{font-family:'Nunito',sans-serif;font-size:17px;font-weight:900;color:#4C1D95;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.bank-sub{font-size:12px;color:#7B5EA7;margin-bottom:14px}
+.bank-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.bank-card{background:white;border-radius:12px;padding:12px 8px;text-align:center;box-shadow:0 2px 8px rgba(123,94,167,.1)}
+.bank-emoji{font-size:20px;margin-bottom:4px;display:block}
+.bank-name{font-weight:700;font-size:12px;margin-bottom:6px}
+.bank-saved{font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#7B5EA7;line-height:1;margin-bottom:1px}
+.bank-saved-label{font-size:9px;color:#7B5EA7;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.week-dots{display:flex;gap:2px;justify-content:center;margin-bottom:5px;flex-wrap:wrap}
+.week-dot{width:13px;height:13px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;color:white;flex-shrink:0}
+.wd-good{background:#0DC995}.wd-warn{background:#FF9F43}.wd-bad{background:#FF5E7D}
+.wd-empty{background:#E8DDD5;color:#9A8070}
+.wd-today{outline:2px solid var(--ink);outline-offset:1px}
+.bank-effective{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── ENTRY FORM ── */
+.add-row{display:flex;flex-direction:column;gap:10px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.inp{padding:14px 16px;border:2px solid var(--border);border-radius:14px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--ink);background:var(--cream);outline:none;transition:border-color .2s;width:100%}
+.inp:focus{border-color:#0DC995}
+.btn{padding:14px 18px;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;min-height:50px}
+.btn-search{background:#F0E8DF;color:#5A3A2E}.btn-search:hover{background:#E8DDD5}
+.btn-add{background:var(--pc,#1A1F1A);color:white;width:100%}.btn-add:hover{opacity:.88}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-row{display:flex;gap:8px}
+.search-results{background:white;border:2px solid var(--border);border-radius:14px;margin-top:4px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);max-height:280px;overflow-y:auto}
+.search-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;font-size:14px}
+.search-item:last-child{border-bottom:none}
+.search-item:active{background:var(--cream)}
+.search-item-name{font-weight:600;margin-bottom:2px}
+.search-item-meta{color:var(--muted);font-size:12px}
+.si-sugar{font-weight:700;float:right}
+.si-sugar.low{color:#0DC995}.si-sugar.mid{color:#FF9F43}.si-sugar.high{color:#FF5E7D}
+.search-empty{padding:18px;color:var(--muted);font-size:14px;text-align:center}
+.note{font-size:12px;color:var(--muted);margin-top:5px;min-height:16px}
+.flabel{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px}
+
+/* ── ENTRIES ── */
+.entry-list{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.entry-item{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--cream);border-radius:12px;border:1px solid var(--border);animation:fi .2s ease}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.entry-food{font-weight:600;font-size:14px}
+.entry-right{display:flex;align-items:center;gap:10px}
+.entry-sugar{font-weight:700;font-size:12px;padding:4px 9px;border-radius:8px}
+.entry-del{background:none;border:none;cursor:pointer;color:#C4B8B0;font-size:20px;padding:6px;transition:color .2s;line-height:1;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center}
+.entry-del:hover{color:var(--bad)}
+.empty{text-align:center;padding:28px;color:#C4B8B0;font-size:14px}
+.prompt-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.prompt-icon{font-size:48px;margin-bottom:12px}
+
+/* ── CHARTS ── */
+.chart-wrap{height:240px;position:relative}
+.stat-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+.stat-card{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.stat-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.stat-emoji{font-size:22px}
+.stat-name{font-weight:700;font-size:15px}
+.stat-sub{font-size:12px;color:var(--muted)}
+.big-num{font-family:'Fraunces',serif;font-size:38px;font-weight:700;line-height:1;margin-bottom:3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{border-radius:100px;padding:4px 10px;font-size:11px;font-weight:700}
+.tag-good{background:#D1FAF0;color:#065F46}.tag-warn{background:#FEF3C7;color:#92400E}
+.tag-bad{background:#FFE4E8;color:#9B1C2C}.tag-neu{background:#F0E8DF;color:#5A3A2E}
+.tag-save{background:#F3EEFF;color:#4C1D95}
+.streak{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#0DC995,#059669);color:white;border-radius:10px;padding:6px 12px;font-size:13px;font-weight:700;margin-top:8px}
+
+/* ── MONTH TABLE ── */
+.month-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)}
+.month-row:last-child{border-bottom:none}
+.mdot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.month-info{flex:1;min-width:0}
+.month-name{font-weight:700;font-size:15px}
+.month-meta{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-wrap{background:var(--border);border-radius:100px;height:5px;margin-top:5px;overflow:hidden}
+.att-fill{height:100%;border-radius:100px}
+.month-val{text-align:right;flex-shrink:0}
+.month-total{font-weight:700;font-size:16px}
+.month-pct{font-size:11px;margin-top:2px}
+
+/* ── SETTINGS ── */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-end;justify-content:center}
+.settings-overlay.open{display:flex}
+.settings-sheet{background:white;border-radius:24px 24px 0 0;padding:28px 20px calc(28px + env(safe-area-inset-bottom));width:100%;max-width:500px;box-shadow:0 -8px 40px rgba(0,0,0,.15)}
+.settings-title{font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;margin-bottom:20px}
+.settings-row{margin-bottom:16px}
+.settings-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.settings-value{background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:12px;font-family:monospace;word-break:break-all;cursor:pointer}
+.settings-value:hover{background:#F0E8DF}
+.danger-btn{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:12px;padding:14px 16px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;width:100%;margin-top:8px}
+.danger-btn:hover{background:#FEE2E2}
+.close-btn{float:right;background:none;border:none;cursor:pointer;font-size:24px;color:var(--muted);padding:4px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,0,0,.12);border-top-color:#3a7a3a;border-radius:50%;animation:rot .6s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes rot{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(80px);background:#1A1F1A;color:white;padding:12px 22px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:300;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── DESKTOP OVERRIDES ── */
+@media(min-width:600px){
+  .family-grid{grid-template-columns:repeat(5,1fr);gap:12px}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .add-row{flex-direction:row;flex-wrap:wrap}
+  .fg{flex:1;min-width:130px}
+  .btn-add{width:auto}
+  .btn-row{flex-wrap:nowrap}
+  .main{padding:24px 20px 32px}
+  .bank-grid{gap:10px}
+  .budget-num{font-size:32px}
+  .chart-wrap{height:270px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ WELCOME ══ -->
+<div class="screen active" id="screen-welcome">
+  <div class="setup-box">
+    <div class="setup-logo">🍃</div>
+    <div class="setup-title">Family Sugar Tracker</div>
+    <div class="setup-sub">Weniger ist mehr — spart Zucker ein und tragt ihn in eure Woche vor.</div>
+    <div class="choice-grid">
+      <div class="choice-btn" onclick="showScreen('screen-create')">
+        <div class="choice-icon">✨</div>
+        <span class="choice-label">Neu erstellen</span>
+        <span class="choice-desc">Ersten Familien-Tracker anlegen</span>
+      </div>
+      <div class="choice-btn" onclick="showScreen('screen-join')">
+        <div class="choice-icon">🔗</div>
+        <span class="choice-label">Beitreten</span>
+        <span class="choice-desc">Vorhandenem Tracker beitreten</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CREATE ══ -->
+<div class="screen" id="screen-create">
+  <div class="setup-box">
+    <button class="step-back" onclick="showScreen('screen-welcome')">← Zurück</button>
+    <div class="setup-logo">🗄️</div>
+    <div class="setup-title">Tracker erstellen</div>
+    <div class="setup-sub">Daten werden bei <a href="https://jsonbin.io" target="_blank" class="link">JSONbin.io</a> gespeichert (kostenlos).</div>
+    <div class="info-box">
+      <strong>So geht's (2 Minuten):</strong>
+      1. <a href="https://jsonbin.io" target="_blank" class="link">jsonbin.io</a> → „Sign Up Free"<br/>
+      2. Nach Login: API Keys → „+ API Key" → kopieren<br/>
+      3. Key unten einfügen → Tracker erstellen
+    </div><br/>
+    <label class="flabel">JSONbin API Key</label>
+    <input class="finput" type="password" id="create-apikey" placeholder="$2a$10$..." autocomplete="off"/>
+    <div class="err-msg" id="create-err"></div>
+    <button class="primary-btn" id="create-btn" onclick="doCreate()">✨ Familien-Tracker erstellen</button>
+  </div>
+</div>
+
+<!-- ══ CODE ══ -->
+<div class="screen" id="screen-code">
+  <div class="setup-box">
+    <div class="setup-logo">🎉</div>
+    <div class="setup-title">Euer Familiencode</div>
+    <div class="setup-sub">Diesen Code + API Key an die Familie schicken.</div>
+    <label class="flabel">Familiencode (klicken zum Kopieren)</label>
+    <div class="code-box" id="family-code-display" onclick="copyCode()"></div>
+    <div class="copy-hint">Klicken zum Kopieren</div>
+    <div class="info-box">
+      <strong>Wie andere beitreten:</strong>
+      App öffnen → „Beitreten" → API Key + Code eingeben.
+    </div>
+    <button class="primary-btn" onclick="enterApp()">Los geht's →</button>
+  </div>
+</div>
+
+<!-- ══ JOIN ══ -->
+<div class="screen" id="screen-join">
+  <div class="setup-box">
+    <button class="step-back" onclick="showScreen('screen-welcome')">← Zurück</button>
+    <div class="setup-logo">🔗</div>
+    <div class="setup-title">Tracker beitreten</div>
+    <div class="setup-sub">API Key und Familiencode eingeben.</div>
+    <label class="flabel">JSONbin API Key</label>
+    <input class="finput" type="password" id="join-apikey" placeholder="$2a$10$..." autocomplete="off"/>
+    <label class="flabel">Familiencode</label>
+    <input class="finput" type="text" id="join-code" placeholder="6640a7f8..." autocomplete="off"/>
+    <div class="err-msg" id="join-err"></div>
+    <button class="primary-btn" id="join-btn" onclick="doJoin()">Beitreten →</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <div class="topbar">
+    <div class="app-title">
+      <!-- Sugar cube logo: 3 cubes with cute faces -->
+      <svg width="48" height="40" viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.18))">
+        <!-- Cube 1 (coral, left) -->
+        <rect x="1" y="10" width="18" height="18" rx="4" fill="#FF5E7D"/>
+        <rect x="1" y="10" width="18" height="5" rx="4" fill="#FF8FA3"/>
+        <rect x="1" y="14" width="18" height="1.5" fill="#FF8FA3" opacity=".5"/>
+        <circle cx="7" cy="22" r="1.5" fill="white"/>
+        <circle cx="13" cy="22" r="1.5" fill="white"/>
+        <path d="M7.5 26 Q10 28.5 12.5 26" stroke="white" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <rect x="3" y="12" width="4" height="2" rx="1" fill="white" opacity=".35"/>
+        <!-- Cube 2 (mint, right) -->
+        <rect x="29" y="10" width="18" height="18" rx="4" fill="#0DC995"/>
+        <rect x="29" y="10" width="18" height="5" rx="4" fill="#4DDDB0"/>
+        <rect x="29" y="14" width="18" height="1.5" fill="#4DDDB0" opacity=".5"/>
+        <circle cx="35" cy="22" r="1.5" fill="white"/>
+        <circle cx="41" cy="22" r="1.5" fill="white"/>
+        <path d="M35.5 26 Q38 28.5 40.5 26" stroke="white" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <rect x="31" y="12" width="4" height="2" rx="1" fill="white" opacity=".4"/>
+        <!-- Cube 3 (sky blue, centre, front) -->
+        <rect x="15" y="4" width="19" height="19" rx="4.5" fill="#38BDF8"/>
+        <rect x="15" y="4" width="19" height="6" rx="4.5" fill="#7DD4FC"/>
+        <rect x="15" y="9" width="19" height="1.5" fill="#7DD4FC" opacity=".5"/>
+        <circle cx="21.5" cy="17" r="1.8" fill="white"/>
+        <circle cx="27.5" cy="17" r="1.8" fill="white"/>
+        <path d="M26.2 17 Q27.5 15.5 28.8 17" stroke="white" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+        <path d="M20 21 Q24.5 24.5 29 21" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <rect x="17" y="6" width="5" height="2.5" rx="1.2" fill="white" opacity=".4"/>
+        <text x="0" y="9" font-size="7" fill="white" opacity=".9">✦</text>
+        <text x="40" y="8" font-size="6" fill="white" opacity=".85">✦</text>
+        <text x="22" y="40" font-size="5" fill="white" opacity=".7">✦</text>
+      </svg>
+      <div class="app-title-text">Zucker<span>würfel</span></div>
+    </div>
+    <div class="topbar-right">
+      <span class="sync-info" id="sync-info"></span>
+      <button class="icon-btn" onclick="syncNow()">↻</button>
+      <button class="icon-btn" onclick="openSettings()">⚙</button>
+    </div>
+  </div>
+  <div class="main">
+
+    <!-- TODAY -->
+    <div id="view-today">
+      <div class="family-grid" id="familyGrid"></div>
+      <div id="entryPanel"></div>
+    </div>
+
+    <!-- BANK -->
+    <div id="view-bank" style="display:none">
+      <div id="bankView"></div>
+    </div>
+
+    <!-- WEEK -->
+    <div id="view-week" style="display:none">
+      <!-- Week navigation -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:white;border-radius:16px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,.05)">
+        <button onclick="changeWeekOffset(-1)" style="background:#F0E8DF;border:none;border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;cursor:pointer;color:#5A3A2E;min-width:44px;min-height:44px">‹</button>
+        <div style="text-align:center">
+          <div id="weekNavLabel" style="font-family:'Nunito',sans-serif;font-weight:900;font-size:15px;color:var(--ink)"></div>
+          <div id="weekNavSub" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+        </div>
+        <button onclick="changeWeekOffset(1)" id="weekNavNext" style="background:#F0E8DF;border:none;border-radius:10px;padding:8px 14px;font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;cursor:pointer;color:#5A3A2E;min-width:44px;min-height:44px">›</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Tagesverbrauch</div>
+        <div class="chart-wrap"><canvas id="weekChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Wochenfortschritt — % des Wochenziels</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:14px">Kumulierter Verbrauch normiert auf 100% = Wochenziel. Ziel: unter der gestrichelten Linie bleiben.</div>
+        <div class="chart-wrap"><canvas id="weekProgressChart"></canvas></div>
+      </div>
+      <div class="stat-grid" id="weekStats"></div>
+    </div>
+
+    <!-- MONTH -->
+    <div id="view-month" style="display:none">
+      <div class="panel">
+        <div class="panel-title">Letzte 4 Wochen — Wochensummen</div>
+        <div class="chart-wrap"><canvas id="monthChart"></canvas></div>
+      </div>
+      <div class="panel" style="margin-top:0">
+        <div class="panel-title">Monatliche Übersicht</div>
+        <div id="monthTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="bnav-btn on" id="bnav-today" onclick="switchTab('today',this)">
+      <span class="bnav-icon">📅</span>
+      <span class="bnav-label">Heute</span>
+    </button>
+    <button class="bnav-btn" id="bnav-bank" onclick="switchTab('bank',this)">
+      <span class="bnav-icon">🏦</span>
+      <span class="bnav-label">Bank</span>
+    </button>
+    <button class="bnav-btn" id="bnav-week" onclick="switchTab('week',this)">
+      <span class="bnav-icon">📊</span>
+      <span class="bnav-label">Woche</span>
+    </button>
+    <button class="bnav-btn" id="bnav-month" onclick="switchTab('month',this)">
+      <span class="bnav-icon">📆</span>
+      <span class="bnav-label">Monat</span>
+    </button>
+  </nav>
+
+<!-- ══ SETTINGS ══ -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings(event)">
+  <div class="settings-sheet">
+    <button class="close-btn" onclick="closeSettings()">×</button>
+    <div class="settings-title">Einstellungen</div>
+    <div class="settings-row">
+      <div class="settings-label">Familiencode</div>
+      <div class="settings-value" id="settings-code" onclick="copyCode()"></div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">JSONbin API Key</div>
+      <div class="settings-value" id="settings-key" style="filter:blur(4px)" onmouseenter="this.style.filter=''" onmouseleave="this.style.filter='blur(4px)'"></div>
+    </div>
+    <button class="danger-btn" onclick="resetApp()">⚠ Gerät zurücksetzen</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const FAMILY = [
+  {name:"Greta", age:13, goal:40, color:"#8B5CF6", light:"#F5F3FF", emoji:"🦄"},
+  {name:"Clara", age:8,  goal:30, color:"#EC4899", light:"#FDF2F8", emoji:"🌸"},
+  {name:"Anna",  age:43, goal:60, color:"#059669", light:"#ECFDF5", emoji:"🚴‍♀️"},
+  {name:"Björn", age:44, goal:65, color:"#D97706", light:"#FFFBEB", emoji:"💻"},
+  {name:"Jakob", age:15, goal:70, color:"#0EA5E9", light:"#F0F9FF", emoji:"🏀"},
+];
+const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
+const DAY_NAMES = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+
+let BIN_ID  = localStorage.getItem("sgt_bin_id")  || "";
+let API_KEY = localStorage.getItem("sgt_api_key") || "";
+let entries = [];
+let activePerson = null;
+let selectedDate = todayStr();
+let weekChartInst = null, monthChartInst = null, bankChartInst = null;
+let searchResults = [];
+let currentTab = "today";
+let syncTimer = null;
+let weekOffset = 0; // 0 = current week, -1 = last week, etc.
+
+// ── DATE HELPERS ──────────────────────────────────────────────
+function todayStr(){return new Date().toISOString().split("T")[0]}
+function dateStr(d){return d.toISOString().split("T")[0]}
+
+/** Monday of the ISO week containing dateStr s */
+function weekMonday(s){
+  const d=new Date(s+"T12:00:00");
+  const day=(d.getDay()+6)%7; // Mon=0 … Sun=6
+  d.setDate(d.getDate()-day);
+  return dateStr(d);
+}
+/** All 7 days Mon–Sun of the week containing s */
+function weekDays(s){
+  const mon=new Date(weekMonday(s)+"T12:00:00");
+  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return dateStr(d)});
+}
+/** Days in current week BEFORE today (Mon … yesterday) */
+function priorWeekDays(){
+  const today=todayStr();
+  return weekDays(today).filter(d=>d<today);
+}
+
+function last7(){
+  return Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return dateStr(d)});
+}
+/** Returns Mon–Sun of the week that is `offset` weeks from current week (0=this week, -1=last week) */
+function weekDaysForOffset(offset){
+  const anchor=new Date();
+  anchor.setDate(anchor.getDate()+offset*7);
+  return weekDays(dateStr(anchor));
+}
+/** Label for a given week offset */
+function weekLabel(offset){
+  const days=weekDaysForOffset(offset);
+  const mon=new Date(days[0]+"T12:00:00");
+  const sun=new Date(days[6]+"T12:00:00");
+  const fmt={day:"numeric",month:"short"};
+  return`KW ${getKW(days[0])} · ${mon.toLocaleDateString("de-DE",fmt)} – ${sun.toLocaleDateString("de-DE",fmt)}`;
+}
+function fmtShort(s){const d=new Date(s+"T12:00:00");return d.toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"})}
+function fmtFull(s){const d=new Date(s+"T12:00:00");return d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"})}
+function getKW(s){
+  const d=new Date(s+"T12:00:00"),thu=new Date(d);
+  thu.setDate(d.getDate()+(4-((d.getDay()||7))));
+  const y=new Date(thu.getFullYear(),0,1);
+  return Math.ceil((((thu-y)/86400000)+1)/7);
+}
+function last4Weeks(){
+  const now=new Date(),mon=new Date(now);
+  mon.setDate(now.getDate()-((now.getDay()+6)%7));
+  return Array.from({length:4},(_,w)=>{
+    const wm=new Date(mon);wm.setDate(mon.getDate()-(3-w)*7);
+    const days=Array.from({length:7},(_,i)=>{const d=new Date(wm);d.setDate(wm.getDate()+i);return dateStr(d)});
+    return{label:`KW ${getKW(days[0])}`,days};
+  });
+}
+function dayTotal(person,date){
+  return entries.filter(e=>e.person===person&&e.date===date).reduce((s,e)=>s+e.sugarG,0);
+}
+
+// ── SAVINGS LOGIC ─────────────────────────────────────────────
+/**
+ * Weekly savings bank — running balance model.
+ * Each day contributes (goal - consumed), which can be positive (saved) or
+ * negative (overage). The running balance is clamped to 0 at all times —
+ * you can't borrow from the future, but overages DO eat into prior savings.
+ * Returns { saved, days: [{date, consumed, delta, runningBalance, status}] }
+ */
+function weeklyBank(person){
+  const p=FAMILY.find(f=>f.name===person);
+  const prior=priorWeekDays();
+  let balance=0;
+  const days=prior.map(date=>{
+    const consumed=dayTotal(person,date);
+    const delta=p.goal-consumed;          // positive = saved, negative = overage
+    balance=Math.max(0,balance+delta);    // can't go below 0
+    const pct=consumed/p.goal;
+    const status=pct<=1?"good":pct<=1.3?"warn":"bad";
+    return{date,consumed,delta:Math.round(delta*10)/10,runningBalance:Math.round(balance*10)/10,status};
+  });
+  return{saved:Math.round(balance*10)/10, days};
+}
+
+/** Effective budget for a person today = goal + carried savings */
+function effectiveBudget(person){
+  const p=FAMILY.find(f=>f.name===person);
+  return p.goal+weeklyBank(person).saved;
+}
+
+function statusOf(consumed,effective,base){
+  // Use effective budget for green/amber/red thresholds
+  const pct=consumed/effective;
+  if(consumed===0) return{label:"🍃 Noch nichts",color:"#22C55E",bg:"#F0FDF4",textColor:"#065F46"};
+  if(pct<=0.5)     return{label:"✓ Super",        color:"#22C55E",bg:"#F0FDF4",textColor:"#065F46"};
+  if(pct<=0.75)    return{label:"→ OK",            color:"#22C55E",bg:"#F0FDF4",textColor:"#065F46"};
+  if(pct<=0.9)     return{label:"⚠ Aufpassen",     color:"#F59E0B",bg:"#FFFBEB",textColor:"#92400E"};
+  if(pct<=1.0)     return{label:"⚠ Fast voll",     color:"#F59E0B",bg:"#FFFBEB",textColor:"#92400E"};
+  return               {label:"✕ Überschritten",   color:"#EF4444",bg:"#FEF2F2",textColor:"#991B1B"};
+}
+
+function streak(person){
+  const p=FAMILY.find(f=>f.name===person);
+  const START="2026-04-13"; // streak counts from this date only
+  let count=0;
+  const d=new Date();d.setDate(d.getDate()-1); // start from yesterday
+  for(let i=0;i<365;i++){
+    const ds=dateStr(d);
+    if(ds<START) break; // don't count days before the start date
+    // Empty day = 0g consumed = within budget → counts as streak day
+    if(dayTotal(person,ds)<=p.goal) count++; else break;
+    d.setDate(d.getDate()-1);
+  }
+  return count;
+}
+
+// ── UTIL ─────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200);
+}
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  const el=document.getElementById(id);if(el)el.classList.add("active");
+}
+
+// ── JSONBIN ───────────────────────────────────────────────────
+async function createBin(apiKey){
+  const res=await fetch(JSONBIN_BASE,{method:"POST",
+    headers:{"Content-Type":"application/json","X-Master-Key":apiKey,"X-Bin-Name":"FamilySugarTracker","X-Bin-Private":"true"},
+    body:JSON.stringify({entries:[]})});
+  if(!res.ok)throw new Error("API Key ungültig oder Fehler ("+res.status+")");
+  return(await res.json()).metadata.id;
+}
+async function fetchBin(){
+  const res=await fetch(`${JSONBIN_BASE}/${BIN_ID}/latest`,{headers:{"X-Master-Key":API_KEY}});
+  if(!res.ok)throw new Error("Laden fehlgeschlagen: "+res.status);
+  return(await res.json()).record.entries||[];
+}
+async function saveBin(){
+  const res=await fetch(`${JSONBIN_BASE}/${BIN_ID}`,{method:"PUT",
+    headers:{"Content-Type":"application/json","X-Master-Key":API_KEY},
+    body:JSON.stringify({entries})});
+  if(!res.ok)throw new Error("Speichern fehlgeschlagen");
+}
+
+// ── SETUP ─────────────────────────────────────────────────────
+async function doCreate(){
+  const apiKey=document.getElementById("create-apikey").value.trim();
+  const err=document.getElementById("create-err"),btn=document.getElementById("create-btn");
+  if(!apiKey){err.textContent="Bitte API Key eingeben.";return}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Erstelle...';err.textContent="";
+  try{
+    const binId=await createBin(apiKey);
+    BIN_ID=binId;API_KEY=apiKey;
+    localStorage.setItem("sgt_bin_id",binId);localStorage.setItem("sgt_api_key",apiKey);
+    document.getElementById("family-code-display").textContent=binId;
+    document.getElementById("settings-code").textContent=binId;
+    document.getElementById("settings-key").textContent=apiKey;
+    showScreen("screen-code");
+  }catch(e){err.textContent=e.message;}
+  btn.disabled=false;btn.innerHTML="✨ Familien-Tracker erstellen";
+}
+function copyCode(){navigator.clipboard.writeText(BIN_ID).then(()=>showToast("Familiencode kopiert ✓")).catch(()=>{})}
+async function doJoin(){
+  const apiKey=document.getElementById("join-apikey").value.trim();
+  const binId=document.getElementById("join-code").value.trim();
+  const err=document.getElementById("join-err"),btn=document.getElementById("join-btn");
+  if(!apiKey||!binId){err.textContent="Bitte beide Felder ausfüllen.";return}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Verbinde...';err.textContent="";
+  try{
+    BIN_ID=binId;API_KEY=apiKey;await fetchBin();
+    localStorage.setItem("sgt_bin_id",binId);localStorage.setItem("sgt_api_key",apiKey);
+    await enterApp();
+  }catch{
+    err.textContent="Verbindung fehlgeschlagen. Code oder Key prüfen.";BIN_ID="";API_KEY="";
+  }
+  btn.disabled=false;btn.innerHTML="Beitreten →";
+}
+async function enterApp(){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("app").style.display="block";
+  document.getElementById("settings-code").textContent=BIN_ID;
+  document.getElementById("settings-key").textContent=API_KEY;
+  // Render immediately with whatever entries we have (may be empty on first load)
+  // so the UI is visible right away — don't wait for the network
+  renderToday();
+  // Then sync in background and refresh
+  await syncNow();
+  syncTimer=setInterval(syncNow,60000);
+}
+async function syncNow(){
+  const info=document.getElementById("sync-info");
+  info.textContent="⟳ Sync...";
+  try{
+    entries=await fetchBin();
+    info.textContent="Sync: "+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+    refreshCurrentView();
+  }catch{info.textContent="Sync fehlgeschlagen";}
+}
+function refreshCurrentView(){
+  if(currentTab==="today") renderToday();
+  else if(currentTab==="bank") renderBank();
+  else if(currentTab==="week") renderWeek();
+  else if(currentTab==="month") renderMonth();
+}
+function switchTab(t,btn){
+  currentTab=t;
+  document.querySelectorAll(".bnav-btn").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  ["today","bank","week","month"].forEach(v=>document.getElementById("view-"+v).style.display="none");
+  document.getElementById("view-"+t).style.display="";
+  if(t==="week") weekOffset=0; // always open on current week
+  setTimeout(()=>refreshCurrentView(), 50);
+}
+
+// ── TODAY ─────────────────────────────────────────────────────
+function renderToday(){renderFamilyGrid();renderEntryPanel();}
+
+function renderFamilyGrid(){
+  document.getElementById("familyGrid").innerHTML=FAMILY.map(p=>{
+    const tot=dayTotal(p.name,todayStr());
+    const bank=weeklyBank(p.name);
+    const effective=p.goal+bank.saved;
+    const rem=Math.max(0,effective-tot);
+    const basePct=Math.min(1,1-dayTotal(p.name,todayStr())/p.goal); // base budget remaining %
+    const effPct=Math.max(0,1-tot/effective);                        // effective remaining %
+    const savePct=bank.saved/effective;                              // savings portion of tank
+    const st=statusOf(tot,effective,p.goal);
+    const sel=activePerson&&activePerson.name===p.name;
+    // Tank shows: base remaining (color) + savings bonus (indigo stripe)
+    const baseH=Math.min(100,Math.max(0,(1-tot/p.goal)*100));
+    const saveH=Math.min(100,savePct*100);
+    return `<div class="pcard${sel?" sel":""}" style="background:${p.light};--pc:${p.color}" onclick="selectPerson('${p.name}')">
+      ${bank.saved>0?`<div class="save-badge">+${bank.saved}g</div>`:""}
+      <span class="pcard-emoji">${p.emoji}</span>
+      <div class="pcard-name">${p.name}</div>
+      <div class="pcard-sub">Limit: ${p.goal}g/Tag</div>
+      <div class="tank-wrap">
+        <div class="tank-fill" style="height:${Math.min(100,Math.max(0,effPct*100))}%;background:${st.color};opacity:.75"></div>
+        ${bank.saved>0?`<div class="tank-save" style="height:${Math.min(saveH,effPct*100)}%"></div>`:""}
+        <div class="tank-label" style="color:${tot>effective?"#fff":p.color}">${rem>0?rem+"g":"−"+Math.round(tot-effective)+"g"}</div>
+      </div>
+      <span class="status-pill" style="background:${st.bg};color:${st.textColor}">${st.label}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderEntryPanel(){
+  const panel=document.getElementById("entryPanel");
+  if(!activePerson){
+    panel.innerHTML=`<div class="panel"><div class="prompt-state"><div class="prompt-icon">👆</div>Wähle ein Familienmitglied<br>um Einträge hinzuzufügen</div></div>`;
+    return;
+  }
+  const p=activePerson;
+  const tot=dayTotal(p.name,selectedDate);
+  const bank=weeklyBank(p.name);
+  const isToday=selectedDate===todayStr();
+  const effective=isToday?p.goal+bank.saved:p.goal; // only apply savings to today
+  const rem=Math.max(0,effective-tot);
+  const over=tot-effective;
+  const st=statusOf(tot,effective,p.goal);
+  const remPct=Math.max(0,Math.min(1,1-tot/effective))*100;
+  const basePortion=Math.min(1,p.goal/effective); // where base ends on bar
+  const dayEntries=entries.filter(e=>e.person===p.name&&e.date===selectedDate);
+
+  panel.innerHTML=`
+  <div class="panel" style="border-left:4px solid ${st.color}">
+    <div class="panel-title-row">
+      <div class="panel-title" style="margin-bottom:0">${p.emoji} ${p.name} — ${isToday?"Heute":fmtFull(selectedDate)}</div>
+      <span class="status-pill" style="background:${st.bg};color:${st.textColor};font-size:13px;padding:5px 12px">${st.label}</span>
+    </div>
+
+    <!-- Budget hero -->
+    <div class="budget-hero">
+      <div class="budget-block" style="background:${st.bg}">
+        <div class="budget-num" style="color:${st.color}">${over>0?"-"+Math.round(over*10)/10:Math.round(rem*10)/10}g</div>
+        <div class="budget-label" style="color:${st.textColor}">${over>0?"Überschritten":"Noch verfügbar"}</div>
+      </div>
+      <div class="budget-block" style="background:#F7FAF5;border:1px solid var(--border)">
+        <div class="budget-num" style="color:#6B7B6B">${Math.round(tot*10)/10}g</div>
+        <div class="budget-label" style="color:var(--muted)">Verbraucht</div>
+      </div>
+      <div class="budget-block" style="background:${bank.saved>0?"#EEF2FF":"#F7FAF5"};border:1px solid ${bank.saved>0?"#C7D2FE":"var(--border)"}">
+        <div class="budget-num" style="color:${bank.saved>0?"#6366F1":"#6B7B6B"}">${effective}g</div>
+        <div class="budget-label" style="color:${bank.saved>0?"#6366F1":"var(--muted)"}">
+          ${bank.saved>0?`${p.goal}g + 🏦 ${bank.saved}g`:"Tageslimit"}
+        </div>
+      </div>
+    </div>
+
+    <!-- Drain bar with savings extension -->
+    <div style="margin-bottom:5px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between">
+      <span>Verbleibendes Budget</span>
+      ${bank.saved>0&&isToday?`<span style="color:#6366F1">🏦 +${bank.saved}g Erspartes aus ${bank.days.filter(d=>d.saved>0).length} Vortag(en)</span>`:""}
+    </div>
+    <div class="drain-bar-wrap" style="margin-bottom:4px;background:#E9F5E9;border-radius:100px;height:14px;overflow:hidden;position:relative">
+      <!-- base budget portion -->
+      <div style="position:absolute;left:0;top:0;height:100%;width:${basePortion*100}%;background:#E9F5E9;border-right:${bank.saved>0?"2px dashed #A5B4FC":""};z-index:1"></div>
+      <!-- remaining fill -->
+      <div style="position:absolute;left:0;top:0;height:100%;width:${remPct}%;background:${st.color};border-radius:100px;transition:width .6s cubic-bezier(.34,1.56,.64,1);z-index:2"></div>
+      <!-- savings extension zone (striped) -->
+      ${bank.saved>0&&isToday?`<div style="position:absolute;left:${basePortion*100}%;top:0;height:100%;width:${(1-basePortion)*100}%;background:repeating-linear-gradient(45deg,rgba(99,102,241,.15) 0px,rgba(99,102,241,.15) 4px,rgba(99,102,241,.05) 4px,rgba(99,102,241,.05) 8px);z-index:0"></div>`:""}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:18px">
+      <span>0g</span>
+      ${bank.saved>0&&isToday?`<span style="color:#A5B4FC">↑ Basis ${p.goal}g</span>`:""}
+      <span>${effective}g</span>
+    </div>
+
+    <!-- Date picker -->
+    <div style="margin-bottom:18px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Datum</span>
+      <input type="date" class="inp" value="${selectedDate}" max="${todayStr()}" onchange="changeDate(this.value)" style="width:auto"/>
+    </div>
+
+    <!-- Add form -->
+    <div class="add-row">
+      <div class="fg">
+        <label class="flabel">Lebensmittel suchen</label>
+        <div class="btn-row">
+          <input type="text" class="inp" id="foodInput" placeholder="z.B. Donut, Müsli, Cola…"
+            oninput="onFoodInput()" onkeydown="if(event.key==='Enter')doFoodSearch()" style="flex:1"/>
+          <button class="btn btn-search" onclick="doFoodSearch()" id="searchBtn">🔍</button>
+        </div>
+        <div id="searchDropdown"></div>
+      </div>
+      <div class="fg">
+        <label class="flabel">Zucker (g)</label>
+        <input type="number" class="inp" id="sugarInput" placeholder="0" min="0" step="0.1"
+          onkeydown="if(event.key==='Enter')addEntry()" inputmode="decimal"/>
+      </div>
+      <button class="btn btn-add" style="--pc:${p.color}" onclick="addEntry()">+ Hinzufügen</button>
+    </div>
+    <div class="note" id="foodNote"></div>
+
+    <div class="entry-list">
+      ${dayEntries.length===0
+        ?`<div class="empty">Noch nichts eingetragen 🌱 — Budget ist voll!</div>`
+        :dayEntries.map(e=>{
+          const impact=Math.round((e.sugarG/effective)*100);
+          const ec=e.sugarG/effective>0.3?"#EF4444":e.sugarG/effective>0.15?"#F59E0B":"#22C55E";
+          return `<div class="entry-item">
+            <span class="entry-food">${e.food}</span>
+            <div class="entry-right">
+              <span class="entry-sugar" style="background:${ec}18;color:${ec}">+${e.sugarG}g (${impact}%)</span>
+              <button class="entry-del" onclick="removeEntry(${e.id})">✕</button>
+            </div>
+          </div>`;
+        }).join("")
+      }
+    </div>
+  </div>`;
+}
+
+function selectPerson(name){
+  const p=FAMILY.find(f=>f.name===name);
+  activePerson=(activePerson&&activePerson.name===name)?null:p;
+  selectedDate=todayStr();renderToday();
+}
+function changeDate(v){selectedDate=v;renderEntryPanel();}
+
+// ── SUGAR BANK VIEW ───────────────────────────────────────────
+function renderBank(){
+  const today=todayStr();
+  const allDays=weekDays(today);
+  const prior=priorWeekDays();
+  const kw=getKW(today);
+
+  const html=`
+    <div class="bank-panel">
+      <div class="bank-title">🏦 Zuckerbank — KW ${kw}</div>
+      <div class="bank-sub">Spare Zucker an guten Tagen — Überschreitungen zehren den Kontostand auf.</div>
+      <div class="bank-grid">
+        ${FAMILY.map(p=>{
+          const bank=weeklyBank(p.name);
+          const effective=p.goal+bank.saved;
+          const todayConsumed=dayTotal(p.name,today);
+          const todayRem=Math.max(0,effective-todayConsumed);
+          return`<div class="bank-card">
+            <span class="bank-emoji">${p.emoji}</span>
+            <div class="bank-name">${p.name}</div>
+            <!-- mini week dots -->
+            <div class="week-dots">
+              ${allDays.map(d=>{
+                const isT=d===today,isFut=d>today;
+                if(isFut) return`<div class="week-dot wd-empty" title="${DAY_NAMES[new Date(d+"T12:00:00").getDay()]}">·</div>`;
+                const con=dayTotal(p.name,d);
+                const hasData=entries.some(e=>e.person===p.name&&e.date===d);
+                const lbl=DAY_NAMES[new Date(d+"T12:00:00").getDay()];
+                const pct=con/p.goal;
+                // No entry = 0g consumed = full goal saved → treat as green
+                const cls=!hasData?"wd-good":pct<=1?"wd-good":pct<=1.3?"wd-warn":"wd-bad";
+                const tooltip=hasData?`${lbl}: ${con}g verbraucht`:`${lbl}: kein Eintrag (+${p.goal}g gespart)`;
+                return`<div class="week-dot ${cls}${isT?" wd-today":""}" title="${tooltip}">${lbl[0]}</div>`;
+              }).join("")}
+            </div>
+            <div class="bank-saved">${bank.saved>0?"+"+bank.saved:"0"}g</div>
+            <div class="bank-saved-label">🏦 Angespart</div>
+            <div class="bank-effective" style="color:#6366F1;font-weight:600">${effective}g Heutiges Budget</div>
+            <div style="margin-top:8px;padding:7px 8px;background:#F7FAF5;border-radius:8px;border:1px solid #DCE8DC">
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+                <span style="color:#8A9E8A;font-weight:600">Verbraucht</span>
+                <span style="font-weight:700;color:${todayConsumed>effective?"#EF4444":todayConsumed/effective>0.85?"#F59E0B":"#22C55E"}">${Math.round(todayConsumed*10)/10}g</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px">
+                <span style="color:#8A9E8A;font-weight:600">Noch übrig</span>
+                <span style="font-weight:700;color:#6366F1">${todayRem}g</span>
+              </div>
+              <div style="margin-top:5px;background:#DCE8DC;border-radius:100px;height:5px;overflow:hidden">
+                <div style="height:100%;width:${Math.min(100,Math.round(todayConsumed/effective*100))}%;background:${todayConsumed>effective?"#EF4444":todayConsumed/effective>0.85?"#F59E0B":"#22C55E"};border-radius:100px;transition:width .4s"></div>
+              </div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    <!-- Per-person detail rows -->
+    ${prior.length===0
+      ? `<div class="panel"><div class="empty">Die Woche hat heute erst begonnen — noch keine Vortage zum Anzeigen.</div></div>`
+      : FAMILY.map(p=>{
+          const bank=weeklyBank(p.name);
+          const totalSaved=bank.saved;
+          return`<div class="panel" style="border-left:4px solid #7B5EA7">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+              <span style="font-size:28px">${p.emoji}</span>
+              <div style="flex:1">
+                <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:600">${p.name}</div>
+                <div style="font-size:12px;color:var(--muted)">Basis-Tageslimit: ${p.goal}g · Heutiges effektives Budget: ${p.goal+totalSaved}g</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:#7B5EA7">${totalSaved>0?"+"+totalSaved:"0"}g</div>
+                <div style="font-size:11px;color:#7B5EA7;font-weight:600">Kontostand 🏦</div>
+              </div>
+            </div>
+            <!-- Day breakdown -->
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${bank.days.map(day=>{
+                const d=new Date(day.date+"T12:00:00");
+                const dayName=d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"short"});
+                const con=day.consumed;
+                const delta=day.delta;
+                const balance=day.runningBalance;
+                const pct=Math.min(con/p.goal,1)*100;
+                const barC=con>p.goal?"#FF5E7D":con/p.goal>0.85?"#FF9F43":"#0DC995";
+                const deltaColor=delta>=0?"#0DC995":"#FF5E7D";
+                const deltaLabel=delta>=0?`+${delta}g gespart`:`${delta}g aufgezehrt`;
+                return`<div style="padding:12px 14px;background:var(--cream);border-radius:12px;border:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                    <span style="font-size:12px;font-weight:600;min-width:90px">${dayName}</span>
+                    <div style="flex:1;background:#E8E0D8;border-radius:100px;height:8px;overflow:hidden">
+                      <div style="height:100%;width:${pct}%;background:${barC};border-radius:100px"></div>
+                    </div>
+                    <span style="font-size:12px;font-weight:600;min-width:60px;text-align:right">${con}g / ${p.goal}g</span>
+                    <span style="font-size:12px;font-weight:700;min-width:80px;text-align:right;color:${deltaColor}">${deltaLabel}</span>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;font-size:11px;color:#7B5EA7;font-weight:600">
+                    Kontostand nach diesem Tag: ${balance}g 🏦
+                  </div>
+                </div>`;
+              }).join("")}
+            </div>
+            ${totalSaved>0?`<div style="margin-top:12px;padding:10px 14px;background:#F3EEFF;border-radius:10px;font-size:13px;color:#4C1D95;font-weight:500">
+              🏦 Kontostand: ${totalSaved}g → Heutiges Budget: <strong>${p.goal}g + ${totalSaved}g = ${p.goal+totalSaved}g</strong>
+            </div>`:""}
+          </div>`;
+        }).join("")
+    }
+
+    <!-- Chart: savings vs. base goal for the week -->
+    ${prior.length>0?`
+    <div class="panel">
+      <div class="panel-title">Wochenverlauf — Tagesverbrauch & Ersparnisse</div>
+      <div class="chart-wrap"><canvas id="bankChart"></canvas></div>
+    </div>`:""}
+  `;
+
+  document.getElementById("bankView").innerHTML=html;
+
+  // Draw bank chart
+  if(prior.length>0){
+    const labels=prior.map(d=>new Date(d+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric"}));
+    const datasets=FAMILY.map(p=>({
+      label:p.emoji+" "+p.name,
+      data:prior.map(d=>dayTotal(p.name,d)),
+      backgroundColor:prior.map(d=>{
+        const con=dayTotal(p.name,d);
+        return con>p.goal?"#EF444488":con/p.goal>0.85?"#F59E0B88":p.color+"88";
+      }),
+      borderColor:p.color,
+      borderWidth:1.5,
+      borderRadius:5,
+      borderSkipped:false,
+    }));
+    // Goal lines as separate dataset (type line)
+    const goalDatasets=FAMILY.map(p=>({
+      label:`Limit ${p.name}`,
+      data:prior.map(()=>p.goal),
+      type:"line",
+      borderColor:p.color,
+      borderWidth:1,
+      borderDash:[4,4],
+      pointRadius:0,
+      fill:false,
+    }));
+    if(bankChartInst)bankChartInst.destroy();
+    const ctx=document.getElementById("bankChart");
+    bankChartInst=new Chart(ctx,{
+      type:"bar",
+      data:{labels,datasets:[...datasets,...goalDatasets]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{font:{family:"DM Sans",size:11},boxWidth:10,filter:i=>!i.text.startsWith("Limit")}},
+          tooltip:{callbacks:{label:ctx=>{
+            if(ctx.dataset.type==="line")return null;
+            const p=FAMILY[ctx.datasetIndex];
+            const v=ctx.parsed.y;
+            const saved=Math.max(0,p.goal-v);
+            return` ${p.name}: ${v}g (${saved>0?"🏦 "+saved+"g gespart":"−"+Math.max(0,v-p.goal)+"g über Limit"})`;
+          }}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{family:"DM Sans",size:11}}},
+          y:{grid:{color:"#E4EEE4"},ticks:{font:{family:"DM Sans",size:11},callback:v=>v+"g"}}
+        }
+      }
+    });
+  }
+}
+
+// ── FOOD SEARCH ───────────────────────────────────────────────
+let searchTimeout=null;
+function onFoodInput(){
+  clearTimeout(searchTimeout);
+  const q=(document.getElementById("foodInput")||{}).value||"";
+  if(q.trim().length<3){const dd=document.getElementById("searchDropdown");if(dd)dd.innerHTML="";return}
+  searchTimeout=setTimeout(doFoodSearch,600);
+}
+function sugarClass(g100){return g100>20?"high":g100>10?"mid":"low"}
+async function doFoodSearch(){
+  const fi=document.getElementById("foodInput");if(!fi)return;
+  const q=fi.value.trim();if(!q)return;
+  const btn=document.getElementById("searchBtn"),dd=document.getElementById("searchDropdown");
+  if(!btn||!dd)return;
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  dd.innerHTML=`<div class="search-results"><div class="search-empty">Suche läuft…</div></div>`;
+  try{
+    const url=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&fields=product_name,brands,nutriments,serving_size&page_size=8&lc=de`;
+    const res=await fetch(url);const data=await res.json();
+    searchResults=(data.products||[])
+      .filter(p=>p.product_name&&p.nutriments&&typeof p.nutriments['sugars_100g']==='number')
+      .slice(0,6)
+      .map(p=>({
+        name:(p.product_name||"").slice(0,50),brand:(p.brands||"").split(",")[0].trim(),
+        sugar100g:Math.round(p.nutriments['sugars_100g']*10)/10,
+        sugarServing:p.nutriments['sugars_serving']!=null?Math.round(p.nutriments['sugars_serving']*10)/10:null,
+        servingText:p.serving_size||"100g",
+      }));
+    if(!searchResults.length){
+      dd.innerHTML=`<div class="search-results"><div class="search-empty">Nichts gefunden – manuell eingeben</div></div>`;
+    }else{
+      dd.innerHTML=`<div class="search-results">${searchResults.map((r,i)=>{
+        const sc=sugarClass(r.sugar100g);
+        const lbl=r.sugar100g<=5?"🟢 Wenig":r.sugar100g<=15?"🟡 Moderat":"🔴 Viel";
+        return`<div class="search-item" onclick="selectFood(${i})">
+          <div class="search-item-name">${r.name}${r.brand?` <span style="font-weight:400;color:var(--muted)">(${r.brand})</span>`:""}
+            <span class="si-sugar ${sc}">${r.sugar100g}g/100g</span>
+          </div>
+          <div class="search-item-meta">${lbl} · ${r.sugarServing!=null?r.sugarServing+"g/Portion ("+r.servingText+")":"Portion: "+r.servingText}</div>
+        </div>`;
+      }).join("")}</div>`;
+    }
+  }catch{dd.innerHTML=`<div class="search-results"><div class="search-empty">Suche fehlgeschlagen – manuell eingeben</div></div>`;}
+  btn.disabled=false;btn.innerHTML="🔍 Suchen";
+}
+function selectFood(i){
+  const r=searchResults[i];
+  document.getElementById("foodInput").value=r.name;
+  document.getElementById("searchDropdown").innerHTML="";
+  const g=r.sugarServing!=null?r.sugarServing:r.sugar100g;
+  document.getElementById("sugarInput").value=g;
+  const note=document.getElementById("foodNote");
+  const effective=activePerson?effectiveBudget(activePerson.name):g*10;
+  const impact=Math.round((g/effective)*100);
+  const ic=impact>30?"color:#EF4444":impact>15?"color:#F59E0B":"color:#22C55E";
+  note.innerHTML=`<span style="${ic}">▲ ${g}g = ${impact}% deines heutigen Budgets</span>${r.sugarServing!=null?" ("+r.servingText+")":"  — passe für deine Portion an"}`;
+}
+
+// ── ADD / REMOVE ──────────────────────────────────────────────
+async function addEntry(){
+  const fi=document.getElementById("foodInput"),si=document.getElementById("sugarInput");
+  if(!fi||!si||!activePerson)return;
+  const food=fi.value.trim(),sugarG=parseFloat(si.value);
+  if(!food||isNaN(sugarG)||sugarG<0)return;
+  entries.push({id:Date.now(),person:activePerson.name,food,sugarG:Math.round(sugarG*10)/10,date:selectedDate||todayStr(),createdAt:new Date().toISOString()});
+  fi.value="";si.value="";
+  const dd=document.getElementById("searchDropdown");if(dd)dd.innerHTML="";
+  const note=document.getElementById("foodNote");if(note){note.innerHTML="";}
+  refreshCurrentView();
+  try{await saveBin();showToast("Gespeichert ✓");}catch{showToast("Speichern fehlgeschlagen");}
+}
+async function removeEntry(id){
+  entries=entries.filter(e=>e.id!==id);refreshCurrentView();
+  try{await saveBin();}catch{showToast("Fehler beim Löschen");}
+}
+
+// ── WEEK ──────────────────────────────────────────────────────
+const START = "2026-04-13";
+
+function changeWeekOffset(delta){
+  const newOffset=weekOffset+delta;
+  if(newOffset>0) return; // can't go into the future
+  weekOffset=newOffset;
+  setTimeout(()=>renderWeek(),50);
+}
+
+function renderWeek(){
+  const days=weekDaysForOffset(weekOffset);
+  const isCurrentWeek=weekOffset===0;
+  const today=todayStr();
+
+  // Update nav controls
+  document.getElementById("weekNavLabel").textContent=weekLabel(weekOffset);
+  document.getElementById("weekNavSub").textContent=isCurrentWeek?"Aktuelle Woche":"";
+  document.getElementById("weekNavNext").style.opacity=weekOffset===0?"0.3":"1";
+  document.getElementById("weekNavNext").style.pointerEvents=weekOffset===0?"none":"auto";
+
+  // For past weeks show all 7 days; for current week only up to today
+  const visibleDays=days.filter(d=>d>=START&&d<=today);
+  if(!visibleDays.length){
+    document.getElementById("weekStats").innerHTML=`<div class="panel" style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted)">Keine Daten für diese Woche (vor dem 13.4.2026)</div>`;
+    if(weekChartInst)weekChartInst.destroy();
+    if(window._weekProgressChartInst)window._weekProgressChartInst.destroy();
+    return;
+  }
+
+  const labels=days.map(d=>{
+    const wd=new Date(d+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short",day:"numeric"});
+    return wd;
+  });
+
+  // Bar chart
+  const datasets=FAMILY.map(p=>({
+    label:p.emoji+" "+p.name,
+    data:days.map(d=>d>today||d<START?null:Math.round(dayTotal(p.name,d)*10)/10),
+    backgroundColor:p.color+"CC",
+    borderColor:p.color,
+    borderWidth:1,borderRadius:5,borderSkipped:false,
+  }));
+  if(weekChartInst)weekChartInst.destroy();
+  weekChartInst=new Chart(document.getElementById("weekChart"),{
+    type:"bar",data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{family:"DM Sans",size:11},boxWidth:10}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.parsed.y===null)return null;
+          const p=FAMILY[ctx.datasetIndex];const v=ctx.parsed.y;
+          const s=Math.max(0,p.goal-v);
+          return` ${p.name}: ${v}g${s>0?" (🏦 "+s+"g gespart)":""}`;
+        }}}
+      },
+      scales:{x:{grid:{display:false},ticks:{font:{family:"DM Sans",size:10}}},
+              y:{grid:{color:"#F0E8DF"},ticks:{font:{family:"DM Sans",size:10},callback:v=>v+"g"}}}}
+  });
+
+  // Stat cards
+  document.getElementById("weekStats").innerHTML=FAMILY.map(p=>{
+    const tots=days.map(d=>d>today||d<START?0:dayTotal(p.name,d));
+    const total=tots.reduce((a,b)=>a+b,0);
+    const countableDays=days.filter(d=>d>=START&&d<=today).length;
+    const avg=countableDays?total/countableDays:0;
+    const daysUnder=days.filter(d=>d>=START&&d<=today&&dayTotal(p.name,d)<=p.goal).length;
+    const daysOver=days.filter(d=>d>=START&&d<=today&&dayTotal(p.name,d)>p.goal).length;
+    const saved=Math.max(0,p.goal*countableDays-total);
+    const s=isCurrentWeek?streak(p.name):0;
+    return`<div class="stat-card">
+      <div class="stat-head"><span class="stat-emoji">${p.emoji}</span>
+        <div><div class="stat-name">${p.name}</div><div class="stat-sub">Budget: ${p.goal}g/Tag</div></div>
+      </div>
+      <div class="big-num" style="color:${daysOver===0?"#0DC995":daysOver<=2?"#FF9F43":"#FF5E7D"}">${Math.round(total)}g</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">von ${p.goal*countableDays}g Budget (${countableDays} Tage)</div>
+      <div class="tags">
+        <span class="tag tag-neu">⌀ ${Math.round(avg*10)/10}g/Tag</span>
+        ${daysUnder>0?`<span class="tag tag-good">✓ ${daysUnder} Tage im Budget</span>`:""}
+        ${daysOver>0?`<span class="tag tag-bad">✕ ${daysOver}× überschritten</span>`:""}
+        ${saved>0?`<span class="tag tag-save">🏦 ${Math.round(saved)}g gespart</span>`:""}
+      </div>
+      ${s>0?`<div class="streak">🔥 ${s} Tage Streak</div>`:""}
+    </div>`;
+  }).join("");
+
+  // Progress chart (normalized %)
+  const dayLabels=days.map(d=>new Date(d+"T12:00:00").toLocaleDateString("de-DE",{weekday:"short"}));
+  let weekProgressChartInst2=window._weekProgressChartInst;
+  if(weekProgressChartInst2)weekProgressChartInst2.destroy();
+  const progressDatasets=FAMILY.map(p=>{
+    let cum=0;
+    const weekGoal=p.goal*7;
+    const data=days.map(d=>{
+      if(d>today||d<START) return null;
+      cum+=dayTotal(p.name,d);
+      return Math.round((cum/weekGoal)*1000)/10;
+    });
+    return{label:p.emoji+" "+p.name,data,borderColor:p.color,backgroundColor:"transparent",
+      borderWidth:2.5,tension:.3,pointRadius:4,pointBackgroundColor:p.color,spanGaps:false};
+  });
+  const idealData=days.map((_,i)=>Math.round(((i+1)/7)*1000)/10);
+  progressDatasets.push({label:"Idealtempo",data:idealData,borderColor:"#94A3B8",
+    backgroundColor:"transparent",borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:0});
+  const ctx2=document.getElementById("weekProgressChart");
+  window._weekProgressChartInst=new Chart(ctx2,{
+    type:"line",data:{labels:dayLabels,datasets:progressDatasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{family:"DM Sans",size:11},boxWidth:10,
+        filter:i=>i.text!=="Idealtempo"}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.parsed.y===null)return null;
+          return` ${ctx.dataset.label}: ${ctx.parsed.y}%`;
+        }}}
+      },
+      scales:{x:{grid:{display:false},ticks:{font:{family:"DM Sans",size:10}}},
+        y:{min:0,grid:{color:"#F0E8DF"},ticks:{font:{family:"DM Sans",size:10},callback:v=>v+"%"}}
+      }
+    }
+  });
+}
+
+// ── MONTH ─────────────────────────────────────────────────────
+function renderMonth(){
+  const weeks=last4Weeks();
+  const datasets=FAMILY.map(p=>({
+    label:p.emoji+" "+p.name,
+    data:weeks.map(w=>Math.round(w.days.reduce((s,d)=>s+dayTotal(p.name,d),0)*10)/10),
+    borderColor:p.color,backgroundColor:p.color+"20",borderWidth:2.5,
+    tension:.3,pointRadius:6,
+    pointBackgroundColor:weeks.map(w=>{const t=w.days.reduce((s,d)=>s+dayTotal(p.name,d),0);return t>p.goal*7?"#EF4444":t>p.goal*7*.85?"#F59E0B":"#22C55E";}),
+    fill:false,
+  }));
+  if(monthChartInst)monthChartInst.destroy();
+  monthChartInst=new Chart(document.getElementById("monthChart"),{
+    type:"line",data:{labels:weeks.map(w=>w.label),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{family:"DM Sans",size:12},boxWidth:12}}},
+      scales:{x:{grid:{display:false},ticks:{font:{family:"DM Sans",size:12}}},
+              y:{grid:{color:"#E4EEE4"},ticks:{font:{family:"DM Sans",size:11},callback:v=>v+"g"}}}}
+  });
+  const allDays=weeks.flatMap(w=>w.days);
+  const START="2026-04-13";
+  document.getElementById("monthTable").innerHTML=FAMILY.map(p=>{
+    const tot=allDays.reduce((s,d)=>s+dayTotal(p.name,d),0);
+    // Count all days from START up to today — empty days count as 0g
+    const countableDays=allDays.filter(d=>d>=START&&d<=todayStr()).length;
+    const avg=countableDays?tot/countableDays:0;
+    const daysOver=allDays.filter(d=>d>=START&&d<=todayStr()&&dayTotal(p.name,d)>p.goal).length;
+    const daysUnder=allDays.filter(d=>d>=START&&d<=todayStr()&&dayTotal(p.name,d)<=p.goal).length;
+    const budget=p.goal*28,usedPct=Math.round(Math.min(tot/budget,1)*100);
+    const saved=Math.max(0,budget-tot);
+    const bc=tot>budget?"#EF4444":tot>budget*.85?"#F59E0B":"#22C55E";
+    return`<div class="month-row">
+      <div class="mdot" style="background:${bc}"></div>
+      <span style="font-size:22px">${p.emoji}</span>
+      <div class="month-info">
+        <div class="month-name">${p.name}</div>
+        <div class="month-meta">⌀ ${Math.round(avg*10)/10}g/Tag · ${daysUnder} Tage im Budget · ${daysOver} überschritten</div>
+        <div class="att-wrap"><div class="att-fill" style="width:${usedPct}%;background:${bc}"></div></div>
+      </div>
+      <div class="month-val">
+        <div class="month-total" style="color:${bc}">${Math.round(tot)}g</div>
+        <div class="month-pct" style="color:${bc}">${saved>0?"🍃 "+Math.round(saved)+"g gespart":"✕ "+Math.round(tot-budget)+"g über Budget"}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+function openSettings(){document.getElementById("settingsOverlay").classList.add("open")}
+function closeSettings(e){if(!e||!e.target.closest(".settings-sheet"))document.getElementById("settingsOverlay").classList.remove("open")}
+function resetApp(){
+  if(confirm("Dieses Gerät zurücksetzen? Cloud-Daten bleiben erhalten.")){
+    clearInterval(syncTimer);localStorage.removeItem("sgt_bin_id");localStorage.removeItem("sgt_api_key");
+    BIN_ID="";API_KEY="";entries=[];document.getElementById("app").style.display="none";
+    showScreen("screen-welcome");document.getElementById("settingsOverlay").classList.remove("open");
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+(()=>{if(BIN_ID&&API_KEY)enterApp();else showScreen("screen-welcome");})();
+</script>
+</body>
+</html>
