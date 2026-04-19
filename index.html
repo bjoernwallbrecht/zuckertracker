@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>🍬 Zuckerwürfel — Family Sugar Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -46,7 +46,7 @@ html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cre
 .link{color:#16A34A;text-decoration:none}.link:hover{text-decoration:underline}
 
 /* ── MAIN APP ── */
-#app{display:none;min-height:100vh;padding-bottom:72px}
+#app{display:none;min-height:100vh;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:0 16px;height:60px;position:sticky;top:0;z-index:100;
@@ -60,11 +60,13 @@ html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cre
 .icon-btn:hover{background:rgba(255,255,255,.4)}
 .sync-info{font-size:11px;color:rgba(255,255,255,.9);font-weight:600;background:rgba(255,255,255,.2);padding:4px 8px;border-radius:20px}
 
-/* ── BOTTOM NAV (mobile-first, replaces top tabs) ── */
+/* ── BOTTOM NAV ── */
 .bottom-nav{
   position:fixed;bottom:0;left:0;right:0;z-index:100;
   background:white;border-top:1px solid var(--border);
-  display:flex;padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  display:flex;
+  padding:8px 8px 0;
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
   box-shadow:0 -4px 20px rgba(0,0,0,.08);
 }
 .bnav-btn{
@@ -206,7 +208,7 @@ html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cre
 .close-btn{float:right;background:none;border:none;cursor:pointer;font-size:24px;color:var(--muted);padding:4px}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,0,0,.12);border-top-color:#3a7a3a;border-radius:50%;animation:rot .6s linear infinite;vertical-align:middle;margin-right:4px}
 @keyframes rot{to{transform:rotate(360deg)}}
-.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(80px);background:#1A1F1A;color:white;padding:12px 22px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:300;white-space:nowrap}
+.toast{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(80px);background:#1A1F1A;color:white;padding:12px 22px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:300;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 /* ── DESKTOP OVERRIDES ── */
