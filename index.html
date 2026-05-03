@@ -439,7 +439,7 @@ html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cre
 // iOS caches home screen apps aggressively. On each load, we compare
 // this constant against what's stored in localStorage. If it changed,
 // we force a hard reload so the user always runs the latest version.
-const APP_VERSION = "2026-05-03-v1042";
+const APP_VERSION = "2026-05-03-v1047";
 (()=>{
   const stored = localStorage.getItem("sgt_version");
   if(stored && stored !== APP_VERSION){
@@ -685,7 +685,6 @@ async function syncNow(){
     info.textContent="Sync: "+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
     refreshCurrentView();
   }catch{info.textContent="Sync fehlgeschlagen";}
-}
 }
 function refreshCurrentView(){
   if(currentTab==="today") renderToday();
