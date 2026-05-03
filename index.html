@@ -382,7 +382,7 @@ html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cre
     <!-- MONTH -->
     <div id="view-month" style="display:none">
       <div class="panel">
-        <div class="panel-title">Letzte 4 Wochen — Wochensummen</div>
+        <div class="panel-title">Letzte 4 Wochen — % des Wochenziels</div>
         <div class="chart-wrap"><canvas id="monthChart"></canvas></div>
       </div>
       <div class="panel" style="margin-top:0">
@@ -1174,45 +1174,86 @@ function renderWeek(){
 // ── MONTH ─────────────────────────────────────────────────────
 function renderMonth(){
   const weeks=last4Weeks();
+  const today=todayStr();
+  // For each week, compute how many days are countable (not in future, not before START)
+  const START="2026-04-13";
+  function weekCountableDays(w){return w.days.filter(d=>d>=START&&d<=today).length;}
+  // % of weekly goal consumed — scaled to actual countable days so partial weeks are fair
+  function weekPct(p,w){
+    const cd=weekCountableDays(w);
+    if(!cd)return null;
+    const tot=w.days.reduce((s,d)=>s+dayTotal(p.name,d),0);
+    const scaledGoal=p.goal*cd; // only count goal for days that have passed
+    return Math.round(tot/scaledGoal*1000)/10; // one decimal, e.g. 73.4
+  }
   const datasets=FAMILY.map(p=>({
     label:p.emoji+" "+p.name,
-    data:weeks.map(w=>Math.round(w.days.reduce((s,d)=>s+dayTotal(p.name,d),0)*10)/10),
+    data:weeks.map(w=>weekPct(p,w)),
     borderColor:p.color,backgroundColor:p.color+"20",borderWidth:2.5,
     tension:.3,pointRadius:6,
-    pointBackgroundColor:weeks.map(w=>{const t=w.days.reduce((s,d)=>s+dayTotal(p.name,d),0);return t>p.goal*7?"#EF4444":t>p.goal*7*.85?"#F59E0B":"#22C55E";}),
+    pointBackgroundColor:weeks.map(w=>{
+      const pct=weekPct(p,w);
+      if(pct===null)return p.color;
+      return pct>100?"#EF4444":pct>85?"#F59E0B":"#22C55E";
+    }),
     fill:false,
+    spanGaps:false,
   }));
+  // 100% reference line
+  datasets.push({
+    label:"Wochenziel (100%)",
+    data:weeks.map(()=>100),
+    borderColor:"#94A3B8",backgroundColor:"transparent",
+    borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:0,
+  });
   if(monthChartInst)monthChartInst.destroy();
   monthChartInst=new Chart(document.getElementById("monthChart"),{
     type:"line",data:{labels:weeks.map(w=>w.label),datasets},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{font:{family:"DM Sans",size:12},boxWidth:12}}},
-      scales:{x:{grid:{display:false},ticks:{font:{family:"DM Sans",size:12}}},
-              y:{grid:{color:"#E4EEE4"},ticks:{font:{family:"DM Sans",size:11},callback:v=>v+"g"}}}}
+      plugins:{
+        legend:{labels:{font:{family:"DM Sans",size:12},boxWidth:12,
+          filter:i=>i.text!=="Wochenziel (100%)"}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.parsed.y===null)return null;
+          if(ctx.dataset.label==="Wochenziel (100%)")return null;
+          return` ${ctx.dataset.label}: ${ctx.parsed.y}% des Wochenziels`;
+        }}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{family:"DM Sans",size:12}}},
+        y:{min:0,grid:{color:"#E4EEE4"},
+           ticks:{font:{family:"DM Sans",size:11},callback:v=>v+"%"},
+           // draw a subtle band at 100%
+        }
+      }
+    }
   });
-  const allDays=weeks.flatMap(w=>w.days);
-  const START="2026-04-13";
+
   document.getElementById("monthTable").innerHTML=FAMILY.map(p=>{
+    const allDays=weeks.flatMap(w=>w.days);
+    const countableDays=allDays.filter(d=>d>=START&&d<=today).length;
     const tot=allDays.reduce((s,d)=>s+dayTotal(p.name,d),0);
-    // Count all days from START up to today — empty days count as 0g
-    const countableDays=allDays.filter(d=>d>=START&&d<=todayStr()).length;
-    const avg=countableDays?tot/countableDays:0;
-    const daysOver=allDays.filter(d=>d>=START&&d<=todayStr()&&dayTotal(p.name,d)>p.goal).length;
-    const daysUnder=allDays.filter(d=>d>=START&&d<=todayStr()&&dayTotal(p.name,d)<=p.goal).length;
-    const budget=p.goal*28,usedPct=Math.round(Math.min(tot/budget,1)*100);
-    const saved=Math.max(0,budget-tot);
-    const bc=tot>budget?"#EF4444":tot>budget*.85?"#F59E0B":"#22C55E";
+    const scaledBudget=p.goal*countableDays;
+    const pct=scaledBudget?Math.round(tot/scaledBudget*1000)/10:0; // % of goal used so far
+    const daysOver=allDays.filter(d=>d>=START&&d<=today&&dayTotal(p.name,d)>p.goal).length;
+    const daysUnder=allDays.filter(d=>d>=START&&d<=today&&dayTotal(p.name,d)<=p.goal).length;
+    const barPct=Math.round(Math.min(pct,150)/150*100); // bar maxes at 150%
+    const bc=pct>100?"#EF4444":pct>85?"#F59E0B":"#22C55E";
+    const diff=pct-100;
     return`<div class="month-row">
       <div class="mdot" style="background:${bc}"></div>
       <span style="font-size:22px">${p.emoji}</span>
       <div class="month-info">
         <div class="month-name">${p.name}</div>
-        <div class="month-meta">⌀ ${Math.round(avg*10)/10}g/Tag · ${daysUnder} Tage im Budget · ${daysOver} überschritten</div>
-        <div class="att-wrap"><div class="att-fill" style="width:${usedPct}%;background:${bc}"></div></div>
+        <div class="month-meta">${daysUnder} Tage im Budget · ${daysOver} überschritten · Ziel: ${p.goal}g/Tag</div>
+        <div class="att-wrap" style="position:relative">
+          <div class="att-fill" style="width:${barPct}%;background:${bc}"></div>
+          ${countableDays<28?`<div style="position:absolute;top:0;bottom:0;left:${Math.round(countableDays/28*100)}%;width:1px;background:rgba(0,0,0,0.15)"></div>`:""}
+        </div>
       </div>
       <div class="month-val">
-        <div class="month-total" style="color:${bc}">${Math.round(tot)}g</div>
-        <div class="month-pct" style="color:${bc}">${saved>0?"🍃 "+Math.round(saved)+"g gespart":"✕ "+Math.round(tot-budget)+"g über Budget"}</div>
+        <div class="month-total" style="color:${bc};font-size:20px">${pct}%</div>
+        <div class="month-pct" style="color:${bc}">${diff<=0?"🍃 "+Math.round(-diff*10)/10+"% unter Ziel":"✕ "+Math.round(diff*10)/10+"% über Ziel"}</div>
       </div>
     </div>`;
   }).join("");
