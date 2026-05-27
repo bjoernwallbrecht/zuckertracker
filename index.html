@@ -439,7 +439,7 @@ html,body{min-height:100vh;font-family:'DM Sans',sans-serif;background:var(--cre
 // iOS caches home screen apps aggressively. On each load, we compare
 // this constant against what's stored in localStorage. If it changed,
 // we force a hard reload so the user always runs the latest version.
-const APP_VERSION = "2026-05-03-v1047";
+const APP_VERSION = "2026-05-27-v1048";
 (()=>{
   const stored = localStorage.getItem("sgt_version");
   if(stored && stored !== APP_VERSION){
@@ -608,14 +608,20 @@ async function createBin(apiKey){
 }
 async function fetchBin(){
   const res=await fetch(`${JSONBIN_BASE}/${BIN_ID}/latest`,{headers:{"X-Master-Key":API_KEY}});
-  if(!res.ok)throw new Error("Laden fehlgeschlagen: "+res.status);
+  if(!res.ok){
+    const hint=res.status===429?" (API-Limit — kurz warten)":res.status===401?" (API Key ungültig)":"";
+    throw new Error("Laden fehlgeschlagen: "+res.status+hint);
+  }
   return(await res.json()).record.entries||[];
 }
 async function saveBin(){
   const res=await fetch(`${JSONBIN_BASE}/${BIN_ID}`,{method:"PUT",
     headers:{"Content-Type":"application/json","X-Master-Key":API_KEY},
     body:JSON.stringify({entries})});
-  if(!res.ok)throw new Error("Speichern fehlgeschlagen");
+  if(!res.ok){
+    const hint=res.status===429?" (API-Limit — kurz warten)":res.status===401?" (API Key ungültig)":"";
+    throw new Error("Speichern fehlgeschlagen: "+res.status+hint);
+  }
 }
 
 // ── SETUP ─────────────────────────────────────────────────────
@@ -661,7 +667,9 @@ async function enterApp(){
   renderToday();
   // Then sync in background and refresh
   await syncNow();
-  syncTimer=setInterval(syncNow,60000);
+  syncTimer=setInterval(syncNow,300000); // 5 min instead of 60s to save API quota
+  // Also sync when user returns to the tab/app
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncNow();},{once:false});
 }
 async function syncNow(){
   if(isSaving) return; // don't sync while a save is in progress
@@ -684,7 +692,7 @@ async function syncNow(){
     }
     info.textContent="Sync: "+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
     refreshCurrentView();
-  }catch{info.textContent="Sync fehlgeschlagen";}
+  }catch(e){info.textContent="⚠ "+e.message;}
 }
 function refreshCurrentView(){
   if(currentTab==="today") renderToday();
@@ -1044,7 +1052,7 @@ async function addEntry(){
     // appears locally but disappears on the next sync (server doesn't have it).
     entries=entries.filter(e=>e.id!==newEntry.id);
     refreshCurrentView();
-    showToast("⚠ Speichern fehlgeschlagen — bitte nochmal versuchen");
+    showToast("⚠ "+e.message);
     console.error(e);
   }
   isSaving=false;
